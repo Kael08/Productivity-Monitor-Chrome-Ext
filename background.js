@@ -12,18 +12,20 @@ function connectToWebSocket() {
 
     socket = new WebSocket(`ws://localhost:8081`)
     console.log(`Попытка подключения`)
+
     socket.addEventListener(`open`, (event)=>{
         console.log(`WebSocket подключен`)
-
+        isRunning=true
+        startTabCheckInterval(1000)
     })
 
     socket.addEventListener(`message`,(event)=>{
         try {
             const data = JSON.parse(event.data)
             if(data.type===`update_blacklist`){
-                console.log(`Получено сообщение с запрещенными доменами`)
+                console.log(`Получено сообщение с запрещенными доменами:`+data.urls)
                 blacklist=data.urls
-                startTabCheckInterval()
+                checkAllTabs()
             }
         }catch(error){
             console.error(`Ошибка парсинга JSON:`, error)
@@ -33,12 +35,12 @@ function connectToWebSocket() {
     socket.addEventListener(`close`,(event)=>{
         console.log(`Соединение закрыто. Код: ${event.code}, Причина: ${event.reason}`)
         blacklist=[]
-        setTimeout(connectToWebSocket,5000)
         stopTabCheckInterval()
+        setTimeout(connectToWebSocket,3000)
     })
 
-    socket.addEventListener(`error`,(error)=>{
-        console.error(`Ошибка WebSocket: `,error)
+    socket.addEventListener('error', (error) => {
+        console.error('Ошибка WebSocket:', error)
     })
 }
 
@@ -48,7 +50,7 @@ function checkAllTabs(){
 
     chrome.tabs.query({},(tabs)=>{
         tabs.forEach(tab=>{
-            if(blacklist.some(url=>tab.url.includes(url))){
+            if(tab.url && blacklist.some(url=>tab.url.includes(url))){
                 console.log(`Закрытие вкладки с запрещенным URL: ${tab.url}`)
                 chrome.tabs.remove(tab.id)
             }
@@ -70,7 +72,9 @@ function startTabCheckInterval(delay){
 // Функция для остановки проверки вкладок по интервалу
 function stopTabCheckInterval(){
     clearTimeout(timeoutId)
+    timeoutId=null
     isRunning=false
+    console.log(`Проверка вкладок остановлена`)
 }
 
 connectToWebSocket()

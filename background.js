@@ -53,6 +53,7 @@ function checkAllTabs(){
             if(tab.url && blacklist.some(url=>tab.url.includes(url))){
                 console.log(`Закрытие вкладки с запрещенным URL: ${tab.url}`)
                 chrome.tabs.remove(tab.id)
+                sendMessageAboutClosedTabs(tab.url)
             }
         })
     })
@@ -75,6 +76,16 @@ function stopTabCheckInterval(){
     timeoutId=null
     isRunning=false
     console.log(`Проверка вкладок остановлена`)
+}
+
+// Функция для отправки сообщений о закрытых вкладках
+function sendMessageAboutClosedTabs(message){
+    if(socket.readyState===WebSocket.OPEN){
+        socket.send("CT:"+message)
+        console.log("Сообщение о закрытой вкладке отправлено")
+    } else{
+        console.error("Соединение не установлено")
+    }
 }
 
 connectToWebSocket()
